@@ -1,5 +1,5 @@
-#include "include/multiboot.h"
-#include "include/memory.h"
+#include <multiboot.h>
+#include <memory.h>
 
 #define MB_HEADER_MAGIC	MULTIBOOT_HEADER_MAGIC
 #define MB_HEADER_FLAGS	(MULTIBOOT_AOUT_KLUDGE | MULTIBOOT_MEMORY_INFO)

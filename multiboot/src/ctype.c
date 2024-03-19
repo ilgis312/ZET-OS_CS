@@ -1,4 +1,4 @@
-#include "include/ctype.h"
+#include <ctype.h>
 
 #define CTYPE_SP	0x01	/* spaces */
 #define CTYPE_DI	0x02	/* digits */

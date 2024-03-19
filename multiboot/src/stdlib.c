@@ -1,6 +1,6 @@
 #include <limits.h>
-#include "include/stdlib.h"
-#include "include/ctype.h"
+#include <stdlib.h>
+#include <ctype.h>
 
 unsigned long strtoul(const char *str, char **endptr, int base)
 {

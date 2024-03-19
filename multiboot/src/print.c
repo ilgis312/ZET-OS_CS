@@ -1,8 +1,8 @@
-#include "include/print.h"
-#include "include/string.h"
-#include "include/stdlib.h"
-#include "include/ctype.h"
-#include "include/vga.h"
+#include <print.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <vga.h>
 
 
 struct print_ctx {

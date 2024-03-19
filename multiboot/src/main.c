@@ -1,8 +1,8 @@
 #include <stdint.h>
-#include "include/multiboot.h"
-#include "include/memory.h"
-#include "include/print.h"
-#include "include/vga.h"
+#include <multiboot.h>
+#include <memory.h>
+#include <print.h>
+#include <vga.h>
 
 
 static void qemu_gdb_hang(void)

@@ -1,6 +1,6 @@
 #include <stddef.h>
-#include "include/memory.h"
-#include "include/vga.h"
+#include <memory.h>
+#include <vga.h>
 
 
 static char * const VBUF = VA(0xB8000);
