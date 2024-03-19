@@ -53,6 +53,6 @@ data:
 	/* First byte is code point and second byte is
 	 * attribute (text color, background color, blink,
 	 * underline). */
-	.asciz "H\017e\017l\017l\017o\017!\017O\017S\017"
+	.asciz "H\017e\017l\017l\017o\017,\017O\017S\017"
 size:
 	.short . - data
