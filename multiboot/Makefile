@@ -1,6 +1,8 @@
 CC ?= gcc
 LD ?= ld
 GDB ?= gdb
+QEMU ?= qemu-system-x86_64
+
 
 CFLAGS := -g -m64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -ffreestanding \
     -mcmodel=kernel -fno-pic -Wall -Wextra -Werror -pedantic -std=c99 \
@@ -37,16 +39,15 @@ $(C_OBJECTS): %.o: %.c
 
 .PHONY: start
 start: all
-	qemu-system-x86_64 -kernel kernel
+	$(QEMU) -kernel kernel
 
 
 .PHONY: clean
 clean:
 	rm -f kernel $(OBJ) $(DEP)
 
-
 .PHONY: debug
 debug: all
-	qemu-system-x86_64 -kernel kernel -S -gdb tcp::1234
+	$(QEMU) -kernel kernel -S -gdb tcp::1234
 
 

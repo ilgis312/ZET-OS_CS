@@ -19,5 +19,5 @@ void main(void)
 {
 	qemu_gdb_hang();
 	vga_clr();
-	printf("Hello, World from kernel of my own BOB OS !\n");
+	printf("Hello, World from kernel of ZET_OS !\n");
 }
