@@ -39,7 +39,7 @@ $(C_OBJECTS): %.o: %.c
 
 .PHONY: start
 start: all
-	$(QEMU) -kernel kernel
+	$(QEMU) -kernel kernel 
 
 
 .PHONY: clean
