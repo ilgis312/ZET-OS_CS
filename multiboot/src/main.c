@@ -3,6 +3,7 @@
 #include <memory.h>
 #include <print.h>
 #include <vga.h>
+#include <ints.h>
 
 
 static void qemu_gdb_hang(void)
@@ -15,9 +16,21 @@ static void qemu_gdb_hang(void)
 }
 
 
+static void div_by_zero_handler(void)
+{
+	printf("Ops... Devision By Zero!\n");
+	while (1);
+}
+
 void main(void)
 {
 	qemu_gdb_hang();
 	vga_clr();
-	printf("Hello, World from kernel of ZET_OS !\n");
+	ints_setup();
+
+	register_exception_handler(INTNO_DIVBYZERO, &div_by_zero_handler);
+
+	static volatile int zero;
+
+	printf("1 / %d = %d\n", zero, 1 / zero);
 }
