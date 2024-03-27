@@ -17,7 +17,7 @@ C_SOURCES := $(shell find $(SRC) -name '*.c')
 C_OBJECTS := $(C_SOURCES:%.c=%.o)
 C_DEPS := $(C_SOURCES:%.c=%.d)
 
-S_SOURCES := $(shell find $(SRC) -name '*.S')
+S_SOURCES := $(shell find $(SRC) -name '*.S') intentry.S
 S_OBJECTS := $(S_SOURCES:%.S=%.o)
 S_DEPS := $(S_SOURCES:%.S=%.d)
 
@@ -35,6 +35,9 @@ $(S_OBJECTS): %.o: %.S
 $(C_OBJECTS): %.o: %.c
 	$(CC) $(CFLAGS) -I$(INC) -g -MMD -c $< -o $@
 
+intentry.S: genints.py
+	python3 $< > $@
+
 -include $(DEP)
 
 .PHONY: start
@@ -44,7 +47,7 @@ start: all
 
 .PHONY: clean
 clean:
-	rm -f kernel $(OBJ) $(DEP)
+	rm -f kernel $(OBJ) $(DEP) intentry.S
 
 .PHONY: debug
 debug: all
