@@ -1,9 +1,12 @@
 #include <stdint.h>
-#include <multiboot.h>
-#include <memory.h>
-#include <print.h>
-#include <vga.h>
+
+#include <balloc.h>
 #include <ints.h>
+#include <memory.h>
+#include <paging.h>
+#include <print.h>
+#include <string.h>
+#include <vga.h>
 
 
 static void qemu_gdb_hang(void)
@@ -16,21 +19,32 @@ static void qemu_gdb_hang(void)
 }
 
 
-static void div_by_zero_handler(void)
+void test_mapping(void)
 {
-	printf("Ops... Devision By Zero!\n");
-	while (1);
+	const size_t count = balloc_free_ranges();
+
+	for (size_t i = 0; i != count; ++i) {
+		struct balloc_range range;
+
+		balloc_get_free_range(i, &range);
+		printf("fill 0x%llx-0x%llx\n",
+					(unsigned long long)range.begin,
+					(unsigned long long)range.end);
+		memset(va(range.begin), 42, range.end - range.begin);
+	}
 }
 
-void main(void)
+void main(uintptr_t mb_info_phys)
 {
+	const struct multiboot_info *info = va(mb_info_phys);
+
 	qemu_gdb_hang();
 	vga_clr();
 	ints_setup();
+	balloc_setup(info);
+	paging_setup();
 
-	register_exception_handler(INTNO_DIVBYZERO, &div_by_zero_handler);
+	test_mapping();
 
-	static volatile int zero;
-
-	printf("1 / %d = %d\n", zero, 1 / zero);
+	while (1);
 }
