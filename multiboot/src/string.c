@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include <string.h>
 
 size_t strlen(const char *str)
@@ -24,5 +26,20 @@ void *memset(void *dst, int fill, size_t size)
 
 	while (size--)
 		*to++ = fill;
+	return dst;
+}
+
+void *memmove(void *dst, const void *src, size_t size)
+{
+	if ((uintptr_t)dst < (uintptr_t)src)
+		return memcpy(dst, src, size);
+
+	if (dst != src) {
+		char *to = dst;
+		const char *from = src;
+
+		while (size--)
+			to[size] = from[size];
+	}
 	return dst;
 }
