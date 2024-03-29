@@ -34,6 +34,41 @@ void list_del(struct list_head *node)
 	next->prev = prev;
 }
 
+static void __list_splice(struct list_head *first, struct list_head *last,
+			struct list_head *prev)
+{
+	struct list_head *next = prev->next;
+
+	first->prev = prev;
+	last->next = next;
+	prev->next = first;
+	next->prev = last;
+}
+
+void list_splice(struct list_head *from, struct list_head *to)
+{
+	if (list_empty(from))
+		return;
+
+	struct list_head *first = from->next;
+	struct list_head *last = from->prev;
+
+	list_init(from);
+	__list_splice(first, last, to);	
+}
+
+void list_splice_tail(struct list_head *from, struct list_head *to)
+{
+	if (list_empty(from))
+		return;
+
+	struct list_head *first = from->next;
+	struct list_head *last = from->prev;
+
+	list_init(from);
+	__list_splice(first, last, to->prev);	
+}
+
 int list_empty(const struct list_head *list)
 {
 	return list->next == list;
