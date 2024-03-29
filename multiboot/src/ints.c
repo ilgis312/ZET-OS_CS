@@ -3,6 +3,7 @@
 #include <backtrace.h>
 #include <memory.h>
 #include <print.h>
+#include <apic.h>
 #include <ints.h>
 
 
@@ -20,6 +21,7 @@
 
 #define IDT_EXCEPTION_FLAGS	(IDT_KERNEL | IDT_INT_GATE | IDT_PRESENT)
 #define IDT_INTERRUPT_FLAGS	(IDT_KERNEL | IDT_INT_GATE | IDT_PRESENT)
+#define IDT_SPURIOUS_FLAGS	(IDT_KERNEL | IDT_INT_GATE | IDT_PRESENT)
 
 
 struct idt_desc {
@@ -36,13 +38,22 @@ struct idt_ptr {
 	uint64_t base;
 } __attribute__((packed));
 
+struct int_desc {
+	interrupt_handler_t handler;
+	int busy;
+};
+
 
 typedef void(*int_entry_t)(void);
 extern int_entry_t __raw_handler[];
 
 
+static struct int_desc int_desc[IDT_SIZE - IDT_EXCEPTIONS - 1];
 static exception_handler_t exc_handler[IDT_EXCEPTIONS];
 
+
+static void handle_spurious(void)
+{}
 
 static void handle_exception(struct frame *frame, int exception)
 {
@@ -85,19 +96,32 @@ static void handle_exception(struct frame *frame, int exception)
 	while (1);
 }
 
+static void end_of_interrupt(void)
+{ local_apic_write(LOCAL_APIC_EOI, 0); }
+
+static void handle_interrupt(int intno)
+{
+	/**
+	 * Despite the name of the function it doesn't mark end of the interrupt
+	 * it merely notfies interrupt controller that we are ready for the next
+	 * interrupt. We can relatively safely notify controller right away,
+	 * because we used INTERRUPT GATE entries in the IDT for interrupts
+	 * which means that CPU disables interrupts (in the RFLAGS registers)
+	 * before calling interrupt handler (that is the difference between
+	 * INTERRUPT GATE and TRAP GATE).
+	 **/
+	end_of_interrupt();
+	if (int_desc[intno].handler)
+		int_desc[intno].handler();
+}
+
 void isr_handler(struct frame *frame)
 {
 	const int irq = frame->intno;
 
-	if (irq < IDT_EXCEPTIONS)
-		handle_exception(frame, irq);
-	else {
-		/* Something unexpected happened - report and die. */
-		printf("Unexpected irq %d!\n", irq);
-
-		/* But we can't really die, so just hang in here. */
-		while (1);
-	}
+	if (irq < IDT_EXCEPTIONS) handle_exception(frame, irq);
+	else if (irq == INTNO_SPURIOUS) handle_spurious();
+	else handle_interrupt(irq - IDT_EXCEPTIONS);
 }
 
 
@@ -139,8 +163,12 @@ static void idt_setup(void)
 		const uintptr_t handler = (uintptr_t)__raw_handler[i];
 
 		idt_desc_setup(&IDT[i], KERNEL_CS, handler,
-					IDT_INTERRUPT_FLAGS);
+						IDT_INTERRUPT_FLAGS);
 	}
+
+	idt_desc_setup(&IDT[INTNO_SPURIOUS], KERNEL_CS,
+				(uintptr_t)__raw_handler[INTNO_SPURIOUS],
+				IDT_SPURIOUS_FLAGS);
 
 	const struct idt_ptr ptr = {
 		.limit = sizeof(IDT) - 1,
@@ -153,9 +181,26 @@ static void idt_setup(void)
 void ints_setup(void)
 {
 	idt_setup();
+	local_apic_setup();
+}
+
+int allocate_interrupt(void)
+{
+	for (int i = 0; i != sizeof(int_desc)/sizeof(int_desc[0]); ++i) {
+		if (int_desc[i].busy)
+			continue;
+		int_desc[i].busy = 1;
+		return i + IDT_EXCEPTIONS;
+	}
+	return -1;
 }
 
 void register_exception_handler(int intno, exception_handler_t handler)
 {
 	exc_handler[intno] = handler;
+}
+
+void register_interrupt_handler(int intno, interrupt_handler_t handler)
+{
+	int_desc[intno - IDT_EXCEPTIONS].handler = handler;
 }
