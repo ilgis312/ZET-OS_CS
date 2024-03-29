@@ -7,8 +7,11 @@
 #include <memory.h>
 #include <paging.h>
 #include <print.h>
+#include <slab.h>
 #include <string.h>
 #include <vga.h>
+#include <threads.h>
+#include <time.h>
 
 
 static void qemu_gdb_hang(void)
@@ -21,66 +24,63 @@ static void qemu_gdb_hang(void)
 }
 
 
-static size_t allocate_all(int order, struct list_head *list)
+static int threadx(void *arg)
 {
-	size_t count = 0;
+	const int id = (intptr_t)arg;
 
 	while (1) {
-		struct page *page = __buddy_alloc(order);
+		/**
+		 * You might be surprised what effects may cause
+		 * unsychronized calls to printf from different threads.
+		 * But synchronization is a subject of different week,
+		 * so far we just block interrupts while we printing
+		 * something.
+		 **/
+		const int enabled = local_int_save();
 
-		if (!page)
-			break;
-
-		list_add_tail(&page->ll, list);
-		++count;
+		printf("I'm thread %d\n", id);
+		local_int_restore(enabled);
 	}
-	return count;
+	return 0;
 }
 
-static void write_all(int order, struct list_head *list)
+static int thread0(void *unused)
 {
-	struct list_head *head = list;
+	(void) unused;
 
-	for (struct list_head *ptr = head->next; ptr != head; ptr = ptr->next) {
-		struct page *page = (struct page *)ptr;
-		const uintptr_t phys = page_addr(page);
-
-		memset(va(phys), 3148, PAGE_SIZE << order);
-	}
+	for (int i = 0; i != 100000000; ++i);
+	printf("Thread0: return 42\n");
+	return 42;
 }
 
-static void release_all(int order, struct list_head *list)
+static int init(void *unused)
 {
-	struct list_head *head = list;
+	(void) unused;
 
-	for (struct list_head *ptr = head->next; ptr != head;) {
-		struct page *page = (struct page *)ptr;
+	struct thread *thread = thread_create(&thread0, 0);
+	int ret;
 
-		ptr = ptr->next;
-		__buddy_free(page, order);
+	thread_start(thread);
+	thread_join(thread, &ret);
+	thread_destroy(thread);
+	printf("Thread0 returned %d\n", ret);
+
+	for (int i = 0; i != 100000000; ++i);
+
+	struct thread *thread1 = thread_create(&threadx, (void *)1);
+	struct thread *thread2 = thread_create(&threadx, (void *)2);
+
+	thread_start(thread1);
+	thread_start(thread2);
+
+	while (1) {
+		const int enabled = local_int_save();
+
+		printf("I'm thread 0\n");
+		local_int_restore(enabled);
 	}
-	list_init(list);
+	return 0;
 }
-
-static void buddy_test(void)
-{
-	struct list_head list;
-
-	list_init(&list);
-
-	for (int i = 0; i <= MAX_ORDER; ++i) {
-		const size_t count = allocate_all(i, &list);
-
-		write_all(i, &list);
-		release_all(i, &list);
-		if (!count)
-			break;
-		printf("Allocated %llu blocks of %llu bytes\n",
-					(unsigned long long)count,
-					(unsigned long long)(PAGE_SIZE << i));
-	}
-}
-
 
 void main(uintptr_t mb_info_phys)
 {
@@ -92,8 +92,16 @@ void main(uintptr_t mb_info_phys)
 	balloc_setup(info);
 	paging_setup();
 	buddy_setup();
+	time_setup();
+	scheduler_setup();
 
-	buddy_test();
+	struct thread *thread = thread_create(&init, 0);
 
-	while (1);
+	if (!thread) {
+		printf("failed to create init thread\n");
+		while (1);
+	}
+
+	thread_start(thread);
+	scheduler_idle();
 }
